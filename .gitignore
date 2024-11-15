@@ -1,0 +1,11 @@
+# ignore Questa simulation files
+*.wlf
+*.mpf
+*.mti
+transcript
+work
+
+# ignore pycache
+__pycache__
+
+
