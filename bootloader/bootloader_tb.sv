@@ -6,13 +6,14 @@ module bootloader_tb();
     logic err;
     integer i, j;
     logic [143:0] tb_rx_data [6];
-    logic [23:0] tb_tx_data;
+    logic [47:0] tb_tx_data;
     logic [31:0] exp_data;
 
     // DUT / host UART signals
     logic clk, rst_n, system_rst_n, dut_tx, dut_rx, bootload_en, transmit_en;
     logic [7:0] host_tx_data, host_rx_data;
     logic host_trmt, host_tx_done, host_rx_rdy, done_drawing;
+    logic [23:0] fill_time;
 
     // memory signals
     logic [23:0] fb_input, fb_output;
@@ -45,6 +46,7 @@ module bootloader_tb();
         .bootload_en(bootload_en),
         .transmit_en(transmit_en),
         .pixel_rgb(fb_output),
+        .fill_time(fill_time),
         .bootload_triangle(triangle_data),
         .bootload_addr(triangle_addr),
         .RX(dut_rx), .TX(dut_tx),
@@ -64,6 +66,13 @@ module bootloader_tb();
         .pixel_data(fb_output)
     );
 
+    // timing register
+    always_ff @(posedge clk, negedge system_rst_n)
+        if (~system_rst_n)
+            fill_time <= '0;
+        else if (~done_drawing) // each cycle, increment the timing register
+            fill_time <= fill_time + 1;
+
     // triangle memory to write to
     integer ti;
     always @(posedge clk)
@@ -77,11 +86,12 @@ module bootloader_tb();
         host_trmt = 0;
         err = 0;
         bootload_en = 1;
+        done_drawing = 0;
         rst_n = 0;
         @(negedge clk);
         rst_n = 1;
 
-        $display("BOOTLOAD test 1: send out one triangle");
+        $display("BOOTLOAD test 1: send out one triangle & timing info");
         hostSendNumTris(
             .clk(clk),
             .host_tx_done(host_tx_done),
@@ -139,8 +149,11 @@ module bootloader_tb();
         @(posedge clk);
         write_fb = 0;
 
+        // let the timer increment
+        repeat(97) @(posedge clk);
+
         $display("TRANSMIT test 1: check the read of frame buffer");
-        for (i = 0; i < 3; i++)
+        for (i = 0; i < 6; i++)
             bootloaderFrameBufferRead(
                 .clk(clk),
                 .err(err),
@@ -190,8 +203,8 @@ module bootloader_tb();
         tb_rx_data[4] = 144'h9999_AAAA_BBBB_CCCC_DDDD_EEEE_FFFF_ABAB_CDCD;
         tb_rx_data[5] = 144'hFEDC_BA98_7654_3210_0123_4567_89AB_CDEF_0101;
 
-        // TX expected print data; reading frame buffer data
-        tb_tx_data = 24'h34_ABCD;
+        // TX expected print data; reading frame buffer data & timing info
+        tb_tx_data = 48'h0000_6434_ABCD;
     end
 
     always
@@ -311,7 +324,7 @@ module bootloader_tb();
         ref [7:0] host_rx_data;
         ref done_drawing, transmit_en;
         input integer index;
-        input [23:0] tb_tx_data;
+        input [47:0] tb_tx_data;
 
         // read from the frame buffer and send it out
         @(posedge clk);
@@ -322,7 +335,7 @@ module bootloader_tb();
 
         // validate we sent (and received) the correct output
         @(posedge host_rx_rdy);
-        if (host_rx_data !== {tb_tx_data >> (2-index)*8}[7:0]) begin
+        if (host_rx_data !== {tb_tx_data >> (5-index)*8}[7:0]) begin
             err = 1;
             $display("ERROR! data received @ host (0x%x) does not match expected (0x%x)", host_rx_data, {tb_tx_data >> (3-index)*8}[7:0]);
         end
