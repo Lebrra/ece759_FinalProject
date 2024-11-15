@@ -63,8 +63,8 @@ def send_file(file_path: str, uart_socket: serial.Serial, status_msg=True, debug
             print('Transmission complete\n\n')
     return
 
-def read_framebuffer(uart_socket: serial.Serial):
-    with open('framebuffer_out.txt', '+w') as f:
+def read_framebuffer(uart_socket: serial.Serial, output_file: str):
+    with open(output_file, '+w') as f:
         print('Reading frame buffer data. Press enter to exit\n\n')
         while True:
             data = list(uart_socket.read(3))

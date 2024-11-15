@@ -8,6 +8,7 @@ DEFAULT_DEBUG = False
 DEFAULT_READ_TIMEOUT = 0.01
 DEFAULT_SERIAL_PORT = '/dev/ttyUSB0'
 DEFAULT_TRIANGLE_FILE = '../vectors.csv'
+DEFAULT_OUTPUT_FILE = 'FPGA_framebuffer.out'
 
 # Handles CLA arguments
 def parse_args():
@@ -18,6 +19,7 @@ def parse_args():
     arg_parser.add_argument('-b', metavar='<baud>', dest='baud', type=int, required=False, default=DEFAULT_BAUD_RATE, help=f'Baud rate for serial port. Default: {DEFAULT_BAUD_RATE}')
     arg_parser.add_argument('-t', metavar='<read_timeout>', dest='r_timeout', type=float, required=False, default=DEFAULT_READ_TIMEOUT, help=f'Maximum time to read from serial before checking for keyboard input. Default: {DEFAULT_READ_TIMEOUT}')
     arg_parser.add_argument('-f', metavar='<triangle file>', dest='triangle_file', type=str, required=False, default=DEFAULT_TRIANGLE_FILE, help=f'Input file for reading triangle data. Default: {DEFAULT_TRIANGLE_FILE}')
+    arg_parser.add_argument('-o', metavar='<output file>', dest='output', type=str, required=False, default=DEFAULT_OUTPUT_FILE, help=f'File to write the frame buffer data to as a comma separated list. Default: {DEFAULT_OUTPUT_FILE}')
     arg_parser.add_argument('-d', metavar='<debug message>', dest='debug', type=bool, required=False, default=DEFAULT_DEBUG, help=f'Bootloader print data')
 
     # Process arguments
@@ -55,7 +57,7 @@ while True:
             send_file(cla.triangle_file, uart_socket, True, cla.debug)
         case 'r':
             pass
-            read_framebuffer(uart_socket)
+            read_framebuffer(uart_socket, cla.output)
         case 'e':
             break
         case _:
