@@ -1,9 +1,34 @@
-# ignore Questa simulation files
-*.wlf
-*.mpf
-*.mti
+# ignore Questa simulation files and Quartus compilation files
+work/
 transcript
-work
+db/
+incremental_db/
+wave.do
+*.cr.mti
+*.mpf
+*.rpt
+*.cdf
+*.done
+*.smsg
+*.summary
+*.jdi
+*.pin
+*.sdc
+*.sld
+*.sof
+*.bak
+*.qdf
+*.bsf
+*.cmp
+*.ppf
+*.qip
+*.sip
+*.spd
+*.f
+*.wlf
+*.htm
+*.qws
+c5_pin_model_dump.txt
 
 # ignore pycache
 __pycache__
