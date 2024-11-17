@@ -17,10 +17,10 @@ module cross_product(
     always_ff @(posedge clk, negedge rst_n)
         if (~rst_n)
             valid_counter <= 4'h0;
-        else if (en | en_ff)
-            valid_counter <= valid_counter + 1;
         else if (valid)
             valid_counter <= 4'h0;
+        else if (en | en_ff)
+            valid_counter <= valid_counter + 1;
     assign valid = &valid_counter;
 
     // decompose vectors
@@ -47,7 +47,7 @@ module cross_product(
         .b(b2),
         .q(a3b2)
     );
-    fp16_sub sub_x(
+    fp16sub sub_x(
         .clk(clk),
         .areset(~rst_n),
         .a(a2b3),
@@ -73,8 +73,8 @@ module cross_product(
     fp16sub sub_y(
         .clk(clk),
         .areset(~rst_n),
-        .a(a1b3),
-        .b(a3b1),
+        .a(a3b1),
+        .b(a1b3),
         .q(ny)
     );
 
