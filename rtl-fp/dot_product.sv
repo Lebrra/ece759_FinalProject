@@ -2,7 +2,7 @@ module dot_product(
     input wire clk, rst_n, en,
     input wire [47:0] vec_a, 
     input wire [47:0] vec_b, 
-    output wire [15:0] product,
+    output wire [15:0] scalar,
     output wire valid
 );
 
@@ -17,11 +17,11 @@ module dot_product(
             en_ff <= 1'b0;
     always_ff @(posedge clk, negedge rst_n)
         if (~rst_n)
-            valid_counter <= 4'h0;
+            valid_counter <= 5'h00;
+        else if (valid)
+            valid_counter <= 5'h00;
         else if (en | en_ff)
             valid_counter <= valid_counter + 1;
-        else if (valid)
-            valid_counter <= 4'h0;
     assign valid = valid_counter == 25;
 
     // decompose vectors
@@ -68,7 +68,7 @@ module dot_product(
         .areset(~rst_n),
         .a(sum_xy),
         .b(a3b3),
-        .q(product)
+        .q(scalar)
     );
 
 endmodule
