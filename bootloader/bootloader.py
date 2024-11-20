@@ -66,11 +66,24 @@ def send_file(file_path: str, uart_socket: serial.Serial, status_msg=True, debug
 def read_framebuffer(uart_socket: serial.Serial, output_file: str):
     with open(output_file, '+w') as f:
         print('Reading frame buffer data. Press enter to exit\n\n')
+        have_read_timing=False
         while True:
             data = list(uart_socket.read(3))
             if len(data) > 0:
+                # read the timing info
+                if not have_read_timing:
+                    have_read_timing = True
+                    time = 0
+                    i = 2
+                    for byte in data:
+                        time += int(byte) + (i*256)
+                        i -= 1
+                    f.write('"'+time+'",\n')
+
+                # read the RGB values
                 for byte in data:
-                    f.write(byte.hex()+',')
+                    f.write('"'+int(byte)+'",')
+                f.write('\n')
 
             # break out of data collection on enter key hit
             if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
