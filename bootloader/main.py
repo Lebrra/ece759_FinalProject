@@ -1,14 +1,16 @@
 import argparse
 import serial
 import sys
-from bootloader import *
+from bootloader import send_file, read_framebuffer
+from draw_pixels import *
 
 DEFAULT_BAUD_RATE = 115200
 DEFAULT_DEBUG = False
 DEFAULT_READ_TIMEOUT = 0.01
 DEFAULT_SERIAL_PORT = '/dev/ttyUSB0'
 DEFAULT_TRIANGLE_FILE = '../vectors.csv'
-DEFAULT_OUTPUT_FILE = 'FPGA_framebuffer.out'
+DEFAULT_OUTPUT_FILE = 'FPGA_framebuffer.csv'
+DEFAULT_IMAGE_FILE = 'FPGA_image.png'
 
 # Handles CLA arguments
 def parse_args():
@@ -20,6 +22,7 @@ def parse_args():
     arg_parser.add_argument('-t', metavar='<read_timeout>', dest='r_timeout', type=float, required=False, default=DEFAULT_READ_TIMEOUT, help=f'Maximum time to read from serial before checking for keyboard input. Default: {DEFAULT_READ_TIMEOUT}')
     arg_parser.add_argument('-f', metavar='<triangle file>', dest='triangle_file', type=str, required=False, default=DEFAULT_TRIANGLE_FILE, help=f'Input file for reading triangle data. Default: {DEFAULT_TRIANGLE_FILE}')
     arg_parser.add_argument('-o', metavar='<output file>', dest='output', type=str, required=False, default=DEFAULT_OUTPUT_FILE, help=f'File to write the frame buffer data to as a comma separated list. Default: {DEFAULT_OUTPUT_FILE}')
+    arg_parser.add_argument('-i', metavar='<output image>', dest='image', type=str, required=False, default=DEFAULT_IMAGE_FILE, help=f'Image file to generate of rasterization. Default: {DEFAULT_IMAGE_FILE}')
     arg_parser.add_argument('-d', metavar='<debug message>', dest='debug', type=bool, required=False, default=DEFAULT_DEBUG, help=f'Bootloader print data')
 
     # Process arguments
@@ -58,6 +61,7 @@ while True:
         case 'r':
             pass
             read_framebuffer(uart_socket, cla.output)
+            plot_pixels(pixel_map=get_pixel_data(infilepath=cla.output), outfilepath=cla.image)
         case 'e':
             break
         case _:
