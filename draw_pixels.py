@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import numpy as np
+import argparse
+import sys
 
 def get_pixel_data(infilepath: str, is_from_fpga=True, image_width=256, image_height=256):
     pixel_map = np.ndarray(shape=(image_width, image_height, 3))
@@ -28,4 +30,18 @@ def plot_pixels(pixel_map: np.ndarray, outfilepath: str):
     plt.imsave(outfilepath, pixel_map, cmap=cmap)
 
 if __name__ == '__main__':
-    plot_pixels(pixel_map=get_pixel_data(infilepath='test_colors.csv', image_width=4, image_height=4), outfilepath='test.png')
+    arg_parser = argparse.ArgumentParser(description="ECE 759 Pixel Script; outputs a PNG of the generated frame buffer image", exit_on_error=False)
+
+    DEFAULT_IMAGE_OUTPUT = 'output.png'
+    arg_parser.add_argument('-i', metavar='<input file>', dest='input', type=str, required=True, help='csv/list of RGB colors to display as an image')
+    arg_parser.add_argument('-o', metavar='<output image file>', dest='output', type=str, required=False, default=DEFAULT_IMAGE_OUTPUT, help=f'output image file name, default: {DEFAULT_IMAGE_OUTPUT}')
+    arg_parser.add_argument('-wid', metavar='<width>', dest='width', type=int, required=False, default=256, help='output image file width, default: 256')
+    arg_parser.add_argument('-hgt', metavar='<height>', dest='height', type=int, required=False, default=256, help='output image file height, default: 256')
+
+    try:
+        cla = arg_parser.parse_args()
+    except:
+        arg_parser.print_help()
+        sys.exit(1)
+
+    plot_pixels(pixel_map=get_pixel_data(infilepath=cla.input, image_width=cla.width, image_height=cla.height), outfilepath=cla.output)
