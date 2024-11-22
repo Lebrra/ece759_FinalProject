@@ -17,22 +17,25 @@ module bounding_box(
             counter <= counter + 1;
     assign count_3 = &counter;
 
-    // 4 bit counter, determines when we can safely read the int value
-    reg [3:0] conv_counter;
+    // 3 bit counter, determines when we can safely read the int value
+    reg [2:0] conv_counter;
     reg conv_in_progress;
     logic bbox_done;
     always_ff @(posedge clk, negedge rst_n)
-        if (~rst_n) begin
+        if (~rst_n)
             conv_in_progress <= 1'b0;
-            conv_counter <= 4'h0;
-        end else if (valid) begin
+        else if (valid)
             conv_in_progress <= 1'b0;
-            conv_counter <= 4'h0;
-        end else if (bbox_done | conv_in_progress) begin
+        else if (bbox_done)
             conv_in_progress <= 1'b1;
+    always_ff @(posedge clk, negedge rst_n)
+        if (~rst_n)
+            conv_counter <= 3'b000;
+        else if (valid)
+            conv_counter <= 3'b000;
+        else if (conv_in_progress)
             conv_counter <= conv_counter + 1;
-        end
-    assign valid = conv_counter == 10;
+    assign valid = conv_counter[2];
 
     // decompose triangle
     logic next_vertex;
@@ -169,18 +172,26 @@ module bounding_box(
         next_state = state;
 
         case (state)
-            CMP_1: // compare vertices with current bbox
+            CMP_1: begin// compare vertices with current bbox
                 next_state = BUF;
+                if (prev_state == IDLE) begin
+                    bbox_x_max = 16'h0000;
+                    bbox_x_min = 16'h5bf8;
+                    bbox_y_max = 16'h0000;
+                    bbox_y_min = 16'h5bf8;
+                end
+            end
 
             BUF:   // 1 cycle buffer between comparisons
                 if (count_3) begin
                     next_state = IDLE;
                     bbox_done = 1;
-                end else if (prev_state == CMP_1) begin
+                end else if (prev_state == CMP_1)
                     next_state = CMP_2;
-                    next_vertex = 1;
-                end else if (prev_state == CMP_2)
+                else if (prev_state == CMP_2) begin
                     next_state = CMP_1;
+                    next_vertex = 1;
+                end
 
             CMP_2: begin // compare CMP_1 with screen borders
                 inc_count = 1;
@@ -188,13 +199,9 @@ module bounding_box(
             end
 
             default: // IDLE state
-                if (en) begin
-                    bbox_x_max = 0;
-                    bbox_x_min = 255;
-                    bbox_y_max = 0;
-                    bbox_y_min = 255;
+                if (en)
                     next_state = CMP_1;
-                end
+
         endcase
     end
 
