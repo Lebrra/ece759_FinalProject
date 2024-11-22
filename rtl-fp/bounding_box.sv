@@ -1,32 +1,47 @@
+`default_nettype none
+
+/*
+    this module calculates the bounding box (rectangle)
+    that surrounds any given triangle, so that we do not
+    have to scan the ENTIRE screen each time we compute
+    a triangle. this allows us to speed up our calculations
+*/
 module bounding_box(
     input wire clk, rst_n, en,
     input wire [143:0] triangle,
     output wire [15:0] bbox_y_min_int, bbox_y_max_int, bbox_x_min_int, bbox_x_max_int,
     output wire valid
 );
-    // 2 bit counter, determines when we have found the bbox based on each vertex
-    wire count_3;
-    reg [1:0] counter;
-    logic inc_count;
+    /////////////////////////////////////
+    // 2 bit counter to keep track of //
+    // how many vertices we have     //
+    // updated the bbox with        //
+    /////////////////////////////////
+    wire bbox_calc_done;
+    reg [1:0] vertex_counter;
+    logic inc_vertex_counter;
     always_ff @(posedge clk, negedge rst_n)
         if (~rst_n)
-            counter <= 2'b00;
-        else if (count_3)
-            counter <= 2'b00;
-        else if (inc_count)
-            counter <= counter + 1;
-    assign count_3 = &counter;
+            vertex_counter <= 2'b00;
+        else if (bbox_calc_done)
+            vertex_counter <= 2'b00;
+        else if (inc_vertex_counter)
+            vertex_counter <= vertex_counter + 1;
+    assign bbox_calc_done = &vertex_counter;
 
-    // 3 bit counter, determines when we can safely read the int value
+    //////////////////////////////////////////////////////////
+    // 3 bit counter, determines when the float16 bbox     //
+    // number has been converted to an int, and           //
+    // is thus safe to read at the output (assert valid) //
+    //////////////////////////////////////////////////////
     reg [2:0] conv_counter;
     reg conv_in_progress;
-    logic bbox_done;
     always_ff @(posedge clk, negedge rst_n)
         if (~rst_n)
             conv_in_progress <= 1'b0;
         else if (valid)
             conv_in_progress <= 1'b0;
-        else if (bbox_done)
+        else if (bbox_calc_done)
             conv_in_progress <= 1'b1;
     always_ff @(posedge clk, negedge rst_n)
         if (~rst_n)
@@ -37,11 +52,15 @@ module bounding_box(
             conv_counter <= conv_counter + 1;
     assign valid = conv_counter[2];
 
-    // decompose triangle
+    /////////////////////////////////////////////
+    // extract x & y coords from the triangle //
+    // after updating the current bbox with  //
+    // one vertex, we shift triangle to     //
+    // access the next vertex              //
+    ////////////////////////////////////////
     logic next_vertex;
     wire [15:0] vertex_x, vertex_y;
     reg [143:0] triangle_ff;
-    // TODO: assign vertex values here. shift triangle data ? use ff ?
     always_ff @(posedge clk, negedge rst_n)
         if (~rst_n)
             triangle_ff <= '0;
@@ -52,6 +71,18 @@ module bounding_box(
     assign vertex_x = triangle_ff[143:128];
     assign vertex_y = triangle_ff[127:112];
 
+    /////////////////////////////////////////////////////////////////////
+    // pseudo-code for bbox calculations:                             //
+    //                                                               //
+    // bbox_x_max, bbox_y_max = 0                                   //
+    // bbox_x_min, bbox_y_min = 255                                //
+    // for i in range(3):                                         //
+    //     bbox_x_min = max(0,   min(bbox_x_min, vertex.x))      //
+    //     bbox_y_min = max(0,   min(bbox_y_min, vertex.y))     //
+    //     bbox_x_max = min(255, max(bbox_x_max, vertex.x))    //
+    //     bbox_y_max = min(255, max(bbox_x_max, vertex.y))   //
+    // return bbox_x_max, bbox_y_max, bbox_x_min, bbox_y_min //
+    //////////////////////////////////////////////////////////
     logic [15:0] bbox_x_max, bbox_x_min, bbox_y_max, bbox_y_min;
     wire [15:0] curr_bbox_x_min, curr_bbox_y_min, curr_bbox_x_max, curr_bbox_y_max;
 
@@ -149,6 +180,21 @@ module bounding_box(
         .q(bbox_y_max_int)
     );
 
+    /* State machine I/O
+            Inputs:
+                prev_state
+                en
+                bbox_calc_done
+            Outputs:
+                bbox_x_max
+                bbox_x_min
+                bbox_y_max
+                bbox_y_min
+                next_vertex
+                inc_vertex_counter
+    */
+
+    // state flop
     typedef enum reg [1:0] {IDLE, CMP_1, BUF, CMP_2} state_t;
     state_t prev_state, state, next_state;
     always_ff @(posedge clk, negedge rst_n)
@@ -160,15 +206,15 @@ module bounding_box(
             prev_state <= state;
         end
 
+    // state transitions
     always_comb begin
-       // sm defaults
+       // SM defaults, avoid latches
         bbox_x_max = curr_bbox_x_max;
         bbox_x_min = curr_bbox_x_min;
         bbox_y_max = curr_bbox_y_max;
         bbox_y_min = curr_bbox_y_min;
-        bbox_done = 0;
         next_vertex = 0;
-        inc_count = 0;
+        inc_vertex_counter = 0;
         next_state = state;
 
         case (state)
@@ -183,10 +229,9 @@ module bounding_box(
             end
 
             BUF:   // 1 cycle buffer between comparisons
-                if (count_3) begin
+                if (bbox_calc_done)
                     next_state = IDLE;
-                    bbox_done = 1;
-                end else if (prev_state == CMP_1)
+                else if (prev_state == CMP_1)
                     next_state = CMP_2;
                 else if (prev_state == CMP_2) begin
                     next_state = CMP_1;
@@ -194,7 +239,7 @@ module bounding_box(
                 end
 
             CMP_2: begin // compare CMP_1 with screen borders
-                inc_count = 1;
+                inc_vertex_counter = 1;
                 next_state = BUF;
             end
 
@@ -206,3 +251,5 @@ module bounding_box(
     end
 
 endmodule
+
+`default_nettype wire

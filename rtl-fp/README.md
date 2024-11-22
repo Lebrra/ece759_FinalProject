@@ -13,3 +13,4 @@
 - cross_product..15 cycles
 - dot_product....25 cycles
 - normalize......33 cycles
+- bounding_box...16 cycles
