@@ -37,7 +37,7 @@ def send_file(file_path: str, uart_socket: serial.Serial, status_msg=True, debug
     with open(file_path, 'r') as f:
         # read the number of triangles
         file_data = f.readlines()
-        num_triangles = int(file_data[0].removeprefix('"').removesuffix('"\n'))
+        num_triangles = int(file_data[0].removesuffix('\n'))
 
         if status_msg:
             print('Sending...')
@@ -56,7 +56,7 @@ def send_file(file_path: str, uart_socket: serial.Serial, status_msg=True, debug
 
                 vertices = vertex.split(',')
                 for k in range(3):
-                    triangle.append(np.float16(vertices[k].removeprefix('"').removesuffix('"').removesuffix('"\n')))
+                    triangle.append(np.float16(vertices[k].removesuffix('\n')))
             send_triangle(triangle, uart_socket, debug)
 
         if status_msg:
@@ -78,11 +78,11 @@ def read_framebuffer(uart_socket: serial.Serial, output_file: str):
                     for byte in data:
                         time += int(byte) + (i*256)
                         i -= 1
-                    f.write('"'+time+'",\n')
+                    f.write(time+',\n')
 
                 # read the RGB values
                 for byte in data:
-                    f.write('"'+int(byte)+'",')
+                    f.write(+int(byte)+',')
                 f.write('\n')
 
             # break out of data collection on enter key hit
