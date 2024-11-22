@@ -71,18 +71,18 @@ module bounding_box(
     assign vertex_x = triangle_ff[143:128];
     assign vertex_y = triangle_ff[127:112];
 
-    /////////////////////////////////////////////////////////////////////
-    // pseudo-code for bbox calculations:                             //
-    //                                                               //
-    // bbox_x_max, bbox_y_max = 0                                   //
-    // bbox_x_min, bbox_y_min = 255                                //
-    // for i in range(3):                                         //
-    //     bbox_x_min = max(0,   min(bbox_x_min, vertex.x))      //
-    //     bbox_y_min = max(0,   min(bbox_y_min, vertex.y))     //
-    //     bbox_x_max = min(255, max(bbox_x_max, vertex.x))    //
-    //     bbox_y_max = min(255, max(bbox_x_max, vertex.y))   //
-    // return bbox_x_max, bbox_y_max, bbox_x_min, bbox_y_min //
-    //////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////
+    // pseudo-code for bbox calculations:                              //
+    //                                                                //
+    // bbox_x_max, bbox_y_max = 0                                    //
+    // bbox_x_min, bbox_y_min = 255                                 //
+    // for i in range(3):                                          //
+    //     bbox_x_min = max(0,   min(bbox_x_min, vertex[i].x))    //
+    //     bbox_y_min = max(0,   min(bbox_y_min, vertex[i].y))   //
+    //     bbox_x_max = min(255, max(bbox_x_max, vertex[i].x))  //
+    //     bbox_y_max = min(255, max(bbox_x_max, vertex[i].y)) //
+    // return bbox_x_max, bbox_y_max, bbox_x_min, bbox_y_min  //
+    ///////////////////////////////////////////////////////////
     logic [15:0] bbox_x_max, bbox_x_min, bbox_y_max, bbox_y_min;
     wire [15:0] curr_bbox_x_min, curr_bbox_y_min, curr_bbox_x_max, curr_bbox_y_max;
 
