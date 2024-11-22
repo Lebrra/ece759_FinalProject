@@ -1,8 +1,8 @@
 module bounding_box(
-    input wire clk, rst_n,
+    input wire clk, rst_n, en,
     input wire [143:0] triangle,
-    //output logic [7:0] bbox_y_min, bbox_y_max, bbox_x_min, bbox_x_max
-    output logic valid
+    output wire [15:0] bbox_y_min_int, bbox_y_max_int, bbox_x_min_int, bbox_x_max_int,
+    output wire valid
 );
     // 2 bit counter, determines when we have found the bbox based on each vertex
     wire count_3;
@@ -15,14 +15,41 @@ module bounding_box(
             counter <= 2'b00;
         else if (inc_count)
             counter <= counter + 1;
-    assign count_3 = &count;
+    assign count_3 = &counter;
+
+    // 4 bit counter, determines when we can safely read the int value
+    reg [3:0] conv_counter;
+    reg conv_in_progress;
+    logic bbox_done;
+    always_ff @(posedge clk, negedge rst_n)
+        if (~rst_n) begin
+            conv_in_progress <= 1'b0;
+            conv_counter <= 4'h0;
+        end else if (valid) begin
+            conv_in_progress <= 1'b0;
+            conv_counter <= 4'h0;
+        end else if (bbox_done | conv_in_progress) begin
+            conv_in_progress <= 1'b1;
+            conv_counter <= conv_counter + 1;
+        end
+    assign valid = conv_counter == 10;
 
     // decompose triangle
     logic next_vertex;
     wire [15:0] vertex_x, vertex_y;
+    reg [143:0] triangle_ff;
     // TODO: assign vertex values here. shift triangle data ? use ff ?
+    always_ff @(posedge clk, negedge rst_n)
+        if (~rst_n)
+            triangle_ff <= '0;
+        else if (en)
+            triangle_ff <= triangle;
+        else if (next_vertex)
+            triangle_ff <= triangle_ff << 48;
+    assign vertex_x = triangle_ff[143:128];
+    assign vertex_y = triangle_ff[127:112];
 
-    logic [7:0] bbox_y_min, bbox_y_max, bbox_x_min, bbox_x_max;
+    logic [15:0] bbox_x_max, bbox_x_min, bbox_y_max, bbox_y_min;
     wire [15:0] curr_bbox_x_min, curr_bbox_y_min, curr_bbox_x_max, curr_bbox_y_max;
 
     // bbox_x_max calculation
@@ -93,6 +120,32 @@ module bounding_box(
         .q(curr_bbox_y_min)
     );
 
+    // convert floats to int
+    fp16_to_int min_x_int(
+        .clk(clk),
+        .areset(~rst_n),
+        .a(bbox_x_min),
+        .q(bbox_x_min_int)
+    );
+    fp16_to_int max_x_int(
+        .clk(clk),
+        .areset(~rst_n),
+        .a(bbox_x_max),
+        .q(bbox_x_max_int)
+    );
+    fp16_to_int min_y_int(
+        .clk(clk),
+        .areset(~rst_n),
+        .a(bbox_y_min),
+        .q(bbox_y_min_int)
+    );
+    fp16_to_int max_y_int(
+        .clk(clk),
+        .areset(~rst_n),
+        .a(bbox_y_max),
+        .q(bbox_y_max_int)
+    );
+
     typedef enum reg [1:0] {IDLE, CMP_1, BUF, CMP_2} state_t;
     state_t prev_state, state, next_state;
     always_ff @(posedge clk, negedge rst_n)
@@ -110,7 +163,7 @@ module bounding_box(
         bbox_x_min = curr_bbox_x_min;
         bbox_y_max = curr_bbox_y_max;
         bbox_y_min = curr_bbox_y_min;
-        valid = 0;
+        bbox_done = 0;
         next_vertex = 0;
         inc_count = 0;
         next_state = state;
@@ -122,7 +175,7 @@ module bounding_box(
             BUF:   // 1 cycle buffer between comparisons
                 if (count_3) begin
                     next_state = IDLE;
-                    valid = 1;
+                    bbox_done = 1;
                 end else if (prev_state == CMP_1) begin
                     next_state = CMP_2;
                     next_vertex = 1;

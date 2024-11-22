@@ -6,6 +6,8 @@
 - fp16_to_int..4 cycles
 - int_to_fp16..8 cycles
 - gtz_compare..3 cycles
+- min..........2 cycles
+- max..........2 cycles
 
 ## Higher Level Module Delays @ 200 MHz ##
 - cross_product..15 cycles
