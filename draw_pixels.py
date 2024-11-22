@@ -5,13 +5,13 @@ import numpy as np
 def get_pixel_data(infilepath: str, is_from_fpga=True, image_width=256, image_height=256):
     pixel_map = np.ndarray(shape=(image_width, image_height, 3))
     with open(infilepath, 'r') as f:
-        processing_time = float(f.readline().removeprefix('"').removesuffix('",\n'))
+        processing_time = float(f.readline().removesuffix('\n').removesuffix(','))
         if is_from_fpga:
             processing_time /= (200.0 * 10**3) # 10^3 not 10^6 because we want ms not s
         for i in range(image_width):
             for j in range(image_height):
-                rgb_str = f.readline()
-                rgb_data = [float(i) for i in rgb_str.removeprefix('"').removesuffix('",\n').split('","')]
+                rgb_str = f.readline().removesuffix('\n').removesuffix(',')
+                rgb_data = [float(i) for i in rgb_str.split(',')]
                 pixel_map[i][j] = [rgb_data[k]/256.0 for k in range(3)]
     return pixel_map
 
