@@ -2,6 +2,7 @@ import argparse
 import serial
 import sys
 from bootloader import send_file, read_framebuffer
+sys.path.append('../')
 from draw_pixels import *
 
 DEFAULT_BAUD_RATE = 115200

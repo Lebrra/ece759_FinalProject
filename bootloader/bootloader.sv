@@ -92,7 +92,7 @@ module bootloader(
         else if (read_fb)
             fb_addr <= fb_addr + 1;
     wire done_reading;
-    assign done_reading = fb_addr == 2073599; // reached the end of the 1920x1080 buffer
+    assign done_reading = fb_addr == 65536; // reached the end of the 256x256 buffer
 
     // load the time it took to fill the frame buffer into a register
     reg read_time_ff;
@@ -162,7 +162,7 @@ module bootloader(
 
         case (tx_state)
             default: // IDLE_TX
-                if (done_drawing & transmit_en) begin
+                if (done_drawing & transmit_en & ~done_reading) begin
                     read_time = 1'b1;
                     tx_next_state = READ_TIMING;
                 end
@@ -227,7 +227,7 @@ module bootloader(
     // UART frame counter, increments each time we receive a byte over UART.
     // count up to eighteen frames, as each triangle has 144 bits (18 bytes).
     reg [4:0] frame_count;
-    wire four_frames, eighteen_frames;
+    wire three_frames, eighteen_frames;
     always_ff @(posedge clk, negedge rx_rst_n)
         if (~rx_rst_n)
             frame_count <= '0;
@@ -235,9 +235,9 @@ module bootloader(
             frame_count <= frame_count + 1;
         else if (eighteen_frames)
             frame_count <= '0;
-        else if (four_frames & count_valid) // only reset here after reading number of triangles
+        else if (three_frames & count_valid) // only reset here after reading number of triangles
             frame_count <= '0;
-    assign four_frames = frame_count == 4;
+    assign three_frames = frame_count == 3;
     assign eighteen_frames = frame_count == 18;
 
     // shift in each byte from UART to a temporary register,
@@ -251,12 +251,12 @@ module bootloader(
             rx_word <= (rx_word >> 8) | {rx_byte, 136'd0};
 
     // choose whether to send out this word to bootload_triangle or the word counter
-    reg [31:0] num_triangles;
+    reg [23:0] num_triangles;
     always_ff @(posedge clk, negedge rx_rst_n)
         if (~rx_rst_n)
             num_triangles <= '0;
         else if (count_valid)
-            num_triangles <= rx_word[143:111];
+            num_triangles <= rx_word[143:120];
     always_ff @(posedge clk, negedge rx_rst_n)
         if (~rx_rst_n)
             bootload_triangle <= '0;
@@ -264,8 +264,8 @@ module bootloader(
             bootload_triangle <= rx_word;
 
     // counter for the number of triangles to load in
-    // maximum of 2**32 triangles, although we should never have that many
-    reg [31:0] triangle_count;
+    // maximum of 2**24 triangles, although we should never have that many
+    reg [23:0] triangle_count;
     wire count_full;
     always_ff @(posedge clk, negedge rx_rst_n)
         if (~rx_rst_n)
@@ -280,7 +280,7 @@ module bootloader(
             Inputs:
                 bootload_en
                 count_full
-                four_frames
+                three_frames
                 eighteen_frames
             Outputs:
                 count_valid
@@ -311,7 +311,7 @@ module bootloader(
                     rx_next_state = GET_CNT;
 
             GET_CNT:
-                if (four_frames) begin
+                if (three_frames) begin
                     rx_next_state = RXING;
                     count_valid = 1'b1;
                 end
