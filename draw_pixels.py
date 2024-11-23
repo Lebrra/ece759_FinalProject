@@ -5,16 +5,27 @@ import argparse
 import sys
 
 def get_pixel_data(infilepath: str, is_from_fpga=True, image_width=256, image_height=256):
-    pixel_map = np.ndarray(shape=(image_width, image_height, 3))
+    pixel_map = np.ndarray(shape=(image_height, image_width, 3))
     with open(infilepath, 'r') as f:
-        processing_time = float(f.readline().removesuffix('\n').removesuffix(','))
+        processing_time = float(f.readline().removesuffix('\n'))
+        
+        # if we are getting the data from the FPGA, we need to calculate the time from the clock cycles
         if is_from_fpga:
             processing_time /= (200.0 * 10**3) # 10^3 not 10^6 because we want ms not s
-        for i in range(image_width):
-            for j in range(image_height):
-                rgb_str = f.readline().removesuffix('\n').removesuffix(',')
+        
+        print('Execution time in ms: ' + str(processing_time))
+
+        # extract each pixel's rgb color data
+        for i in range(image_height):
+            for j in range(image_width):
+                rgb_str = f.readline().removesuffix('\n')
                 rgb_data = [float(i) for i in rgb_str.split(',')]
-                pixel_map[i][j] = [rgb_data[k]/256.0 for k in range(3)]
+                
+                # if we are getting the data from the FPGA, divide each color by 256 to normalize it
+                if is_from_fpga:
+                    rgb_data = [rgb_data[k]/256.0 for k in range(3)]
+                
+                pixel_map[i][j] = rgb_data
     return pixel_map
 
 def plot_pixels(pixel_map: np.ndarray, outfilepath: str):
@@ -29,6 +40,7 @@ def plot_pixels(pixel_map: np.ndarray, outfilepath: str):
     cmap = ListedColormap(vals)
     plt.imsave(outfilepath, pixel_map, cmap=cmap)
 
+# this probably will be used for the SW side, the HW side runs the pixel extraction automatically
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description="ECE 759 Pixel Script; outputs a PNG of the generated frame buffer image", exit_on_error=False)
 
@@ -44,4 +56,4 @@ if __name__ == '__main__':
         arg_parser.print_help()
         sys.exit(1)
 
-    plot_pixels(pixel_map=get_pixel_data(infilepath=cla.input, image_width=cla.width, image_height=cla.height), outfilepath=cla.output)
+    plot_pixels(pixel_map=get_pixel_data(infilepath=cla.input, is_from_fpga=False, image_width=cla.width, image_height=cla.height), outfilepath=cla.output)
