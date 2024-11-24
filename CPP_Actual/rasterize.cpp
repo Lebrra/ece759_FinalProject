@@ -2,11 +2,10 @@
 
 #include <iostream>
 #include "filehandler.h"
-#include "barycentric.h"
+#include "pixel.h"
 
 // hardset output height and width
-const float setWidth = 200;
-const float setHeight = 200;
+const int definedSize = 256;
 const float padding = 0;
 
 // vertices.length == vertexCount * 3 (1d array of 3d vertices)
@@ -32,10 +31,10 @@ void adjustToSize(float* vertices, int vertexCount) {
 
     float multiplier;
     if (pointsWidth > pointsHeight) {
-        multiplier = (setWidth - padding*2) / pointsWidth;
+        multiplier = (definedSize - padding*2) / pointsWidth;
     }
     else { 
-        multiplier = (setHeight - padding*2) / pointsHeight;
+        multiplier = (definedSize - padding*2) / pointsHeight;
     }
 
     // apply multiplier to all points (and offset if any points are negative)
@@ -72,21 +71,41 @@ int main(int argc, char** argv) {
     cout << "Adjusting to size..." << endl;
     adjustToSize(vertices, vertCount);
     
-    // NOTE we are ignoring the 3D dimention in barycentric for now !
-    // todo: for loop for all triangles
-    readyOutputFile(fileName);
-    for (int i = 0; i < triangleCount; i++){
-        int tri = i * 3;
-        float* triangleVerts = (float*)malloc(sizeof(float) * 6);
-        triangleVerts[0] = vertices[faces[tri] * 3];
-        triangleVerts[1] = vertices[faces[tri] * 3 + 1];
-        triangleVerts[2] = vertices[faces[tri + 1] * 3];
-        triangleVerts[3] = vertices[faces[tri + 1] * 3 + 1];
-        triangleVerts[4] = vertices[faces[tri + 2] * 3];
-        triangleVerts[5] = vertices[faces[tri + 2] * 3 + 1];
+    bool* pointTests = (bool*)malloc(sizeof(bool) * definedSize * definedSize);
+    for(int i = 0; i < definedSize*definedSize; i++) pointTests[i] = false;
 
-        triangle(fileName, triangleVerts);
+    // do math
+    cout << "Comparing pixels with triangles..." << endl;
+    float* triangle = (float*)malloc(sizeof(float) * 6);
+    for(int tri = 0; tri < triangleCount; tri++){
+        triangle[0] = vertices[faces[tri]];
+        triangle[1] = vertices[faces[tri] + 1];
+        triangle[2] = vertices[faces[tri + 1]];
+        triangle[3] = vertices[faces[tri + 1] + 1];
+        triangle[4] = vertices[faces[tri + 2]];
+        triangle[5] = vertices[faces[tri + 2] + 1];
+
+        // do parallelism here
+        for (int x = 0; x < definedSize; x++){
+            for (int y = 0; y < definedSize; y++){
+                if (!pointTests[y*definedSize + x]) pointTests[y*definedSize + x] = inTriangle(triangle, x, y);
+            }
+        }
     }
+    free(triangle);
+
+    // write
+    cout << "Writing results..." << endl;
+    float* pixel = (float*)malloc(sizeof(float) * 3);
+    readyOutputFile(fileName);
+    for (int i = 0; i < definedSize * definedSize; i++){
+        pixel[0] = i % definedSize;
+        pixel[1] = i / definedSize;
+        if (pointTests[i] == false) pixel[2] = 0;
+        else pixel[2] = 1;
+        writeVertex(fileName, pixel);
+    }
+    free(pixel);
 
     cout << "All done!" << endl;
     free(vertices);
@@ -94,3 +113,7 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
+// Leah - how to run in command line:
+// compile: g++ -o rasterize.exe rasterize.cpp filehandler.cpp barycentric.cpp
+// execute: read.exe [fileName no extention]

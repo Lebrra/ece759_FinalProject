@@ -11,7 +11,7 @@ float* barycentric(float* points2D, float x2D, float y2D) {
     float y = (points2D[0] - x2D) * (points2D[5] - points2D[1]) - (points2D[4] - points2D[0]) * (points2D[1] - y2D);
     float z = (points2D[4] - points2D[0]) * (points2D[3] - points2D[1]) - (points2D[2] - points2D[0]) * (points2D[5] - points2D[1]);
 
-    float* point3D = (float*)malloc(sizeof(int) * 3);
+    float* point3D = (float*)malloc(sizeof(float) * 3);
 
     if (std::abs(z) < 1) {
         point3D[0] = -1;
