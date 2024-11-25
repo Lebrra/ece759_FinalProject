@@ -11,3 +11,4 @@
 - cross_product..15 cycles
 - dot_product....25 cycles
 - normalize......33 cycles
+- vector_sub.....10 cycles
