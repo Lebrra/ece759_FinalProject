@@ -12,3 +12,4 @@
 - dot_product....25 cycles
 - normalize......33 cycles
 - vector_sub.....10 cycles
+- lighting.......86 to 92 cycles, depending on if the triangle should be rendered or not (yikes)
