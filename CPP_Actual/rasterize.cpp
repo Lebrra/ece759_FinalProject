@@ -1,12 +1,13 @@
 // inspiration: https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
 
 #include <iostream>
+#include <chrono>
 #include "filehandler.h"
 #include "pixel.h"
 
 // hardset output height and width
 const int definedSize = 256;
-const float padding = 0;
+const float padding = 10;
 
 // vertices.length == vertexCount * 3 (1d array of 3d vertices)
 void adjustToSize(float* vertices, int vertexCount) {
@@ -44,15 +45,29 @@ void adjustToSize(float* vertices, int vertexCount) {
             vertices[x] -= minX;
         }
         if (minY < 0){
-           vertices[x + 1] -= minX; 
+           vertices[x + 1] -= minY; 
         }
 
         vertices[x] *= multiplier;
         vertices[x + 1] *= multiplier;
+
+        vertices[x] += padding;
+        vertices[x+1] += padding;
     }
 }
 
 int main(int argc, char** argv) {
+    if (argc <= 1){
+        cout << "Please include a filename (excluding the '_vertices.txt' or '_faces.txt') to rasterize!";
+        return 0;
+    }
+    // else I could add optional size values, but let's just hardset it to 256...
+
+    auto start = chrono::steady_clock::now();
+
+    // seeding with chrono so I don't have to include the ctime library:
+	srand(chrono::system_clock::now().time_since_epoch().count());
+
     string fileName = argv[1];
     cout << "Processing file: " << fileName << endl;
 
@@ -70,44 +85,79 @@ int main(int argc, char** argv) {
 
     cout << "Adjusting to size..." << endl;
     adjustToSize(vertices, vertCount);
-    
-    bool* pointTests = (bool*)malloc(sizeof(bool) * definedSize * definedSize);
-    for(int i = 0; i < definedSize*definedSize; i++) pointTests[i] = false;
+
+    int* pointTests = (int*)malloc(sizeof(int) * definedSize * definedSize);
+    for(int i = 0; i < definedSize*definedSize; i++) pointTests[i] = 0;
 
     // do math
+    int validTriangles = 0;
     cout << "Comparing pixels with triangles..." << endl;
     float* triangle = (float*)malloc(sizeof(float) * 6);
     for(int tri = 0; tri < triangleCount; tri++){
-        triangle[0] = vertices[faces[tri]];
-        triangle[1] = vertices[faces[tri] + 1];
-        triangle[2] = vertices[faces[tri + 1]];
-        triangle[3] = vertices[faces[tri + 1] + 1];
-        triangle[4] = vertices[faces[tri + 2]];
-        triangle[5] = vertices[faces[tri + 2] + 1];
+        int face1 = faces[tri * 3];
+        int face2 = faces[tri * 3 + 1];
+        int face3 = faces[tri * 3 + 2];
+
+        triangle[0] = vertices[face1*3];
+        triangle[1] = vertices[face1*3 + 1];
+        triangle[2] = vertices[face2*3];
+        triangle[3] = vertices[face2*3 + 1];
+        triangle[4] = vertices[face3*3];
+        triangle[5] = vertices[face3*3 + 1];
+
+        // validate triangle: (if two points are only different in the z direction then let's just skip it)
+        if ((triangle[0] == triangle[2] && triangle[1] == triangle[3]) ||
+            (triangle[0] == triangle[4] && triangle[1] == triangle[5]) ||
+            (triangle[2] == triangle[4] && triangle[3] == triangle[5])){
+                continue;
+            }
+        validTriangles++;
 
         // do parallelism here
         for (int x = 0; x < definedSize; x++){
             for (int y = 0; y < definedSize; y++){
-                if (!pointTests[y*definedSize + x]) pointTests[y*definedSize + x] = inTriangle(triangle, x, y);
+                if (pointTests[y*definedSize + x] <= 0){
+                    bool isIn = inTriangle(triangle, x, y);
+                    if (isIn) pointTests[y*definedSize + x] = validTriangles;
+                } 
             }
         }
     }
     free(triangle);
 
+    // create random colors:
+    cout << "Generating triangle colors...\n";
+    float* colors = (float*)malloc(sizeof(float) * 3 * validTriangles);
+    for(int i = 0; i < validTriangles * 3; i++){
+        colors[i] = static_cast <float> (rand() / static_cast <float> (RAND_MAX));
+    }
+
+    auto end = chrono::steady_clock::now();
+	auto timePassed = chrono::duration_cast<std::chrono::microseconds>(end - start);
+
     // write
-    cout << "Writing results..." << endl;
+    cout << "Rasterization completed after " << (timePassed.count() / 1000) << "ms!\nWriting results...\n";
     float* pixel = (float*)malloc(sizeof(float) * 3);
-    readyOutputFile(fileName);
+    readyOutputFile(fileName, (timePassed.count() / 1000));
     for (int i = 0; i < definedSize * definedSize; i++){
-        pixel[0] = i % definedSize;
-        pixel[1] = i / definedSize;
-        if (pointTests[i] == false) pixel[2] = 0;
-        else pixel[2] = 1;
+        if (pointTests[i] <= 0) {
+            pixel[0] = pixel[1] = pixel[2] = 0;
+        }
+        else {
+            // do color
+            pixel[0] = colors[(pointTests[i] - 1)*3];
+            pixel[1] = colors[(pointTests[i] - 1)*3 + 1];
+            pixel[2] = colors[(pointTests[i] - 1)*3 + 2];
+        }
         writeVertex(fileName, pixel);
     }
     free(pixel);
 
     cout << "All done!" << endl;
+    auto realEnd = chrono::steady_clock::now();
+	timePassed = chrono::duration_cast<std::chrono::microseconds>(realEnd - start);
+    cout << "Complete process took " << (timePassed.count() / 1000) << "ms\n";
+
     free(vertices);
     free(faces);
 

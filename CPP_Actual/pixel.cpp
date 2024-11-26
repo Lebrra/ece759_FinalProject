@@ -16,10 +16,10 @@ bool inTriangle(float* triangle, int x, int y){
     float b2 = barycentric(x, y, triangle[2], triangle[3], triangle[4], triangle[5]);
     float b3 = barycentric(x, y, triangle[4], triangle[5], triangle[0], triangle[1]);
 
-    bool neg = b1 < 0 || b2 < 0 || b3 < 0;
-    bool pos = b1 > 0 || b2 > 0 || b3 > 0;
+    bool neg = b1 <= 0 && b2 <= 0 && b3 <= 0;
+    bool pos = b1 >= 0 && b2 >= 0 && b3 >= 0;
 
-    return !(neg && pos);
+    return neg || pos;
 }
 
 #endif

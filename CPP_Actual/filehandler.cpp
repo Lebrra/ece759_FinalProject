@@ -63,10 +63,10 @@ void readFaces(string fileName, int* faces) {
     }
 }
 
-void readyOutputFile(string fileName){
+void readyOutputFile(string fileName, long time){
     ofstream of;
     of.open(fileName + "_output.txt", ofstream::out | ofstream::trunc);
-    of << "0" << endl;  // temporary to bypass writing time in python script
+    of << time << endl;
     of.close();
 }
 

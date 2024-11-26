@@ -17,7 +17,7 @@ int getFaceCount(string fileName);
 void readFaces(string fileName, int* faces);
 
 // prepare file [fileName]_output.txt for writing
-void readyOutputFile(string fileName);
+void readyOutputFile(string fileName, long time);
 
 // writes a vertex into the output file [fileName]_output.txt (vertex = x, y, z)
 void writeVertex(string fileName, float* vertex);
