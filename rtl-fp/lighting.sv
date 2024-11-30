@@ -6,8 +6,8 @@ module lighting(
     input wire [47:0] light_vec, // direction that the light source points
     input wire [23:0] input_rgb, // input color of the triangle (for now, assume white)
     output wire [23:0] output_rgb, // the resulting color of the triangle based on the lighting
-    output wire valid, illuminated // valid tells us when the calculation is done
-                                   // illuminated tells us if the triangle should be rendered or not
+    output wire valid,             // valid tells us when the calculation is done
+    output reg  illuminated        // illuminated tells us if the triangle should be rendered or not
 );
 
     // decompose triangle
@@ -62,7 +62,7 @@ module lighting(
 
     // calculate the light intensity for this triangle
     // and if it is to be illuminated or not
-    wire gtz_en;
+    wire gtz_en, q_illuminated;
     wire [15:0] intensity, intensity_enabled;
     dot_product calc_intensity(
         .clk(clk),
@@ -77,9 +77,9 @@ module lighting(
     fp16comp intensity_gtz(
         .clk(clk),
         .areset(~rst_n),
-        .a(intensity_en),
+        .a(intensity_enabled),
         .b(16'h0000), // always compare against zero
-        .q(illuminated)
+        .q(q_illuminated)
     );
 
     // this conversion can be done in parallel with the above calculations
@@ -135,16 +135,16 @@ module lighting(
         .a(r_intensity),
         .q(output_r)
     );
-    fp16_to_int conv_r_back(
+    fp16_to_int conv_g_back(
         .clk(clk),
         .areset(~rst_n),
-        .a(r_intensity),
+        .a(g_intensity),
         .q(output_g)
     );
-    fp16_to_int conv_r_back(
+    fp16_to_int conv_b_back(
         .clk(clk),
         .areset(~rst_n),
-        .a(r_intensity),
+        .a(b_intensity),
         .q(output_b)
     );
     assign output_rgb = {output_r[7:0], output_g[7:0], output_b[7:0]};
@@ -156,8 +156,17 @@ module lighting(
     // we will not be writing to the frame buffer with this triangle
     reg gtz_en_ff;
     reg [3:0] gtz_counter;
-    always_ff @(posedge clk)
-        if (gtz_en)
+    always_ff @(posedge clk, negedge rst_n)
+        if (~rst_n)
+            illuminated <= 1'b0;
+        else if (valid)
+            illuminated <= 1'b0;
+        else if (gtz_counter == 3)
+            illuminated <= q_illuminated;
+    always_ff @(posedge clk, negedge rst_n)
+        if (~rst_n)
+            gtz_en_ff <= 1'b0;
+        else if (gtz_en)
             gtz_en_ff <= 1'b1;
         else if (valid)
             gtz_en_ff <= 1'b0;
@@ -168,7 +177,7 @@ module lighting(
             gtz_counter <= 4'h0;
         else if (gtz_en | gtz_en_ff)
             gtz_counter <= gtz_counter + 1;
-    assign valid = ~illuminated | (gtz_counter == 9);
+    assign valid = gtz_counter == 9;
 
 endmodule
 

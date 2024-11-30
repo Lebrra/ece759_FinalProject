@@ -34,21 +34,21 @@ module vector_subtraction(
 
     fp16sub sub_x(
         .clk(clk),
-        .areset(~areset),
+        .areset(~rst_n),
         .a(a1),
         .b(b1),
         .q(q1)
     );
     fp16sub sub_y(
         .clk(clk),
-        .areset(~areset),
+        .areset(~rst_n),
         .a(a2),
         .b(b2),
         .q(q2)
     );
     fp16sub sub_z(
         .clk(clk),
-        .areset(~areset),
+        .areset(~rst_n),
         .a(a3),
         .b(b3),
         .q(q3)
