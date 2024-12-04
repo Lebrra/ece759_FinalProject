@@ -1,10 +1,10 @@
 // inspiration: https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
 
 #include <cuda.h>
+#include <stdio.h>
+#include <cuda_runtime.h>
 #include <iostream>
 #include <chrono>
-#include <fstream>
-#include <string>
 #include "pixel.cuh"
 #include "sizeAdjuster.cuh"
 #include "filehandler.cuh"
@@ -51,7 +51,39 @@ int main(int argc, char** argv) {
     cudaMalloc((void**)&dVerts, sizeof(float) * vertCount*3);
     cudaMemcpy(dVerts, &vertices, sizeof(float) * vertCount*3, cudaMemcpyHostToDevice);
 
-    adjustSize(dVerts, vertCount, definedSize, padding);
+        // adjust size method is here instead of its own function because it was erroring :(
+    float minX = 0;
+    float maxX = 0;
+    float minY = 0;
+    float maxY = 0;
+
+    // calculate min and max -es
+    for (int i = 0; i < vertCount; i++) {
+        int x = i * 3;  // x + 1 = y
+
+        if (vertices[x] < minX) minX = vertices[x];
+        if (vertices[x] > maxX) maxX = vertices[x];
+        if (vertices[x + 1] < minY) minY = vertices[x + 1];
+        if (vertices[x + 1] > maxY) maxY = vertices[x + 1];
+    }
+
+    // create multiplier based off larger difference
+    float pointsWidth = maxX - minX;
+    float pointsHeight = maxY - minY;
+
+    float multiplier;
+    if (pointsWidth > pointsHeight) {
+        multiplier = (definedSize - padding*2) / pointsWidth;
+    }
+    else { 
+        multiplier = (definedSize - padding*2) / pointsHeight;
+    }
+    // apply multiplier to all points (and offset if any points are negative)
+    int blocks = ((vertCount*3) + 256 - 1) / 256;
+    adjustValue<<<blocks, 256>>>(vertices, vertCount, minX, minY, padding, multiplier);
+    cudaDeviceSynchronize();
+        // end of adjust size function
+
     cudaMemcpy(&vertices, dVerts, sizeof(float) * vertCount*3, cudaMemcpyDeviceToHost);
     cudaFree(dVerts);
 
@@ -87,6 +119,7 @@ int main(int argc, char** argv) {
 
         // do parallelism here
         inTriangle<<<definedSize, definedSize>>>(dTri, dPoints, validTriangles);
+        cudaDeviceSynchronize();
     }
     cudaFree(dTri);
 
@@ -104,6 +137,7 @@ int main(int argc, char** argv) {
 	auto timePassed = chrono::duration_cast<std::chrono::microseconds>(end - start);
 
     // write
+    int colorCounter = 0;
     cout << "Rasterization completed after " << (timePassed.count() / 1000) << "ms!\nWriting results...\n";
     float* pixel = (float*)malloc(sizeof(float) * 3);
     readyOutputFile(fileName, (timePassed.count() / 1000));
@@ -116,7 +150,15 @@ int main(int argc, char** argv) {
             pixel[0] = colors[(pointTests[i] - 1)*3];
             pixel[1] = colors[(pointTests[i] - 1)*3 + 1];
             pixel[2] = colors[(pointTests[i] - 1)*3 + 2];
+            colorCounter++;
         }
+        if (i < 5){
+            cout << "front pixel debug: (" << pixel[0] << ", " << pixel[1] << ", " << pixel[2] << ")\n";
+        }
+        else if (i > definedSize*definedSize-5){
+            cout << "end pixel debug: (" << pixel[0] << ", " << pixel[1] << ", " << pixel[2] << ")\n";
+        }
+
         writeVertex(fileName, pixel);
     }
     free(pixel);
@@ -125,6 +167,7 @@ int main(int argc, char** argv) {
     auto realEnd = chrono::steady_clock::now();
 	timePassed = chrono::duration_cast<std::chrono::microseconds>(realEnd - start);
     cout << "Complete process took " << (timePassed.count() / 1000) << "ms\n";
+    cout << colorCounter << " pixels were colored!\n";
 
     return 0;
 }
