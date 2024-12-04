@@ -35,19 +35,14 @@ int main(int argc, char** argv) {
     cout << "Processing file: " << fileName << endl;
 
     // gather data:
-    cout << "Getting vertex count..." << endl;
     int vertCount = getVertexCount(fileName);
-    cout << "Getting face count..." << endl;
     int triangleCount = getFaceCount(fileName);
 
-    cout << "Alotting pointers..." << endl;
     float* vertices = (float*)malloc(sizeof(float) * vertCount * 3);
     int* faces = (int*)malloc(sizeof(int) * triangleCount * 3);
     float *dVerts;
     
-    cout << "Reading all vertices..." << endl;
     readVertices(fileName, vertices);
-    cout << "Reading all faces..." << endl;
     readFaces(fileName, faces);
 
     cout << "This file has " << vertCount << " vertices and " << triangleCount << " triangles!" << endl;
