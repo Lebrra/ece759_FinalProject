@@ -27,6 +27,7 @@ __global__ void inTriangle(float* triangle, int* results, int triangleValue){
     bool pos = b1 >= 0 && b2 >= 0 && b3 >= 0;
 
     if (neg || pos) results[index] = triangleValue;
+    __syncthreads();
 }
 
 #endif
