@@ -1,7 +1,7 @@
 ### ECE 759 Final Project - Rasterization ###
 
 ## Steps to run: ##
-1. Get a model (STL file)
+1. Get a model (stl file)
 2. Convert model to txt files:
     - (command line) python read_model.py -f [file name without extention]
     - this will generate 2 text files for the vetices and faces
