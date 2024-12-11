@@ -7,8 +7,8 @@
     - this will generate 2 text files for the vetices and faces
     - ideally these should be placed in the WorkingFiles folder, but as long as they exist in the same place it doesn't matter
 3. Rasterize!
-    - (command line) rasterize.exe [file name without extention]
-    - this is the base C++ execution
+    - choose the appropriately named folder for which implementation you wish to run (/CPP for C++, /OpenMP for OpenMP, /Cuda for CUDA)
+    - (command line) ./rasterize [file name without extention]
     - this will generate an txt output file in the same place as the two files it used
 4. Convert back into image:
     - (command line) python draw_pixels.py -i [EXACT filename (ex filename_output.txt)]
