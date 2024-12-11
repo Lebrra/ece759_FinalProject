@@ -59,7 +59,7 @@ generate
   else begin : g_default_baud
     // If you are not using a custom baud rate, the baud_reload used by TX and RX to
     //   reload their baud counters is just driven to a fixed baud rate of 115200
-    assign baud_reload = 13'h01B2;
+    assign baud_reload = 13'h06C8; // this value has been changed to run for a 200MHz clock (multiplied by 4)
   end
 endgenerate
 
