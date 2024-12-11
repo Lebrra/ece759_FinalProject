@@ -49,7 +49,9 @@ int main(int argc, char** argv) {
 
     cout << "Adjusting to size..." << endl;
     cudaMalloc((void**)&dVerts, sizeof(float) * vertCount*3);
-    cudaMemcpy(dVerts, &vertices, sizeof(float) * vertCount*3, cudaMemcpyHostToDevice);
+    // memcpy has an upper limit, so copy memory over one value at a time
+    for (int i = 0; i < vertCount*3; i++)
+        cudaMemcpy(&dVerts[i], &vertices[i], sizeof(float), cudaMemcpyHostToDevice);
 
         // adjust size method is here instead of its own function because it was erroring :(
     float minX = 0;
@@ -170,6 +172,6 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-// Leah - how to run in command line:
-// compile: g++ -o rasterize.exe rasterize.cpp filehandler.cpp barycentric.cpp
-// execute: read.exe [fileName no extention]
+// Aidan - how to run in command line:
+// compile: nvcc rasterize.cu pixel.cu sizeAdjuster.cu filehandler.cu -o rasterize -Xcompiler -O3 -Xptxas -O3 -std=c++17
+// execute: ./rasterize [fileName no extention]
