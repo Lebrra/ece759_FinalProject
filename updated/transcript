@@ -1,9 +1,0 @@
-# Compile of barycentric.sv was successful.
-# Compile of bresenham_line.sv was successful.
-# Compile of inTriangle.sv was successful.
-# Compile of rasterizer.sv was successful with warnings.
-# Compile of tb_top.sv failed with 4 errors.
-# Compile of top.sv was successful with warnings.
-# 6 compiles, 1 failed with 4 errors.
-# Compile of tb_top.sv failed with 4 errors.
-# Compile of tb_top.sv failed with 4 errors.
