@@ -5,10 +5,12 @@
 #include "filehandler.h"
 #include "pixel.h"
 #include "omp.h"
+#include <cmath>
 
 // hardset output height and width
 const int definedSize = 256;
 const float padding = 10;
+const float light[3] = {0.0, 0.0, -1.0};
 
 // vertices.length == vertexCount * 3 (1d array of 3d vertices)
 void adjustToSize(float* vertices, int vertexCount) {
@@ -65,7 +67,6 @@ int main(int argc, char** argv) {
     }
     // else I could add optional size values, but let's just hardset it to 256...
 
-    //omp_set_num_threads(definedSize);
     #pragma omp.h parallel num_threads(definedSize)
 	{
         auto start = chrono::steady_clock::now();
@@ -91,14 +92,13 @@ int main(int argc, char** argv) {
         cout << "Adjusting to size..." << endl;
         adjustToSize(vertices, vertCount);
 
-        int* pointTests = (int*)malloc(sizeof(int) * definedSize * definedSize);
+        float* pointTests = (float*)malloc(sizeof(float) * definedSize * definedSize);
         #pragma omp parallel for
         for(int i = 0; i < definedSize*definedSize; i++) pointTests[i] = 0;
 
         // do math
         int validTriangles = 0;
         cout << "Comparing pixels with triangles..." << endl;
-        //float* triangle = (float*)malloc(sizeof(float) * 6);
         #pragma omp parallel for
         for(int tri = 0; tri < triangleCount; tri++){
             float* triangle = (float*)malloc(sizeof(float) * 6);
@@ -107,12 +107,12 @@ int main(int argc, char** argv) {
             int face2 = faces[tri * 3 + 1];
             int face3 = faces[tri * 3 + 2];
 
-            triangle[0] = vertices[face1*3];
-            triangle[1] = vertices[face1*3 + 1];
-            triangle[2] = vertices[face2*3];
-            triangle[3] = vertices[face2*3 + 1];
-            triangle[4] = vertices[face3*3];
-            triangle[5] = vertices[face3*3 + 1];
+            triangle[0] = vertices[face1*3];     // x0
+            triangle[1] = vertices[face1*3 + 1]; // y0
+            triangle[2] = vertices[face2*3];     // x1
+            triangle[3] = vertices[face2*3 + 1]; // y1
+            triangle[4] = vertices[face3*3];     // x2
+            triangle[5] = vertices[face3*3 + 1]; // y2
 
             // validate triangle: (if two points are only different in the z direction then let's just skip it)
             if ((triangle[0] == triangle[2] && triangle[1] == triangle[3]) ||
@@ -127,20 +127,31 @@ int main(int argc, char** argv) {
             for (int x = 0; x < definedSize; x++){
                 for (int y = 0; y < definedSize; y++){
                     if (pointTests[y*definedSize + x] <= 0){
-                        bool isIn = inTriangle(triangle, x, y);
-                        if (isIn) pointTests[y*definedSize + x] = validTriangles;
+                        if (inTriangle(triangle, x, y)){
+                            float vec0[3] = {triangle[4]-triangle[0],
+                                             triangle[5]-triangle[1],
+                                             vertices[face3*3+2]-vertices[face1*3+2]};
+                            float vec1[3] = {triangle[2]-triangle[0],
+                                             triangle[3]-triangle[1],
+                                             vertices[face2*3+2]-vertices[face1*3+2]};
+                            float norm[3] = {vec0[1]*vec1[2] - vec0[2]*vec1[1],
+                                             vec0[2]*vec1[0] - vec0[0]*vec1[2],
+                                             vec0[0]*vec1[1] - vec0[1]*vec1[0]};
+                            float magnitude = fsqrt(norm[0]*norm[0] + norm[1]*norm[1] + norm[2]*norm[2]);
+                            float normalized_norm[3] = {norm[0]/magnitude,
+                                                        norm[1]/magnitude,
+                                                        norm[2]/magnitude};
+
+                            // since the light is only in the Z direction
+                            // we only have to calculate the Z component
+                            float intensity = normalized_norm[2]*light[2];
+                            if (intensity > 0)
+                                pointTests[y*definedSize + x] = intensity;
+                        }
                     } 
                 }
             }
             free(triangle);
-        }
-
-        // create random colors:
-        cout << "Generating triangle colors...\n";
-        float* colors = (float*)malloc(sizeof(float) * 3 * validTriangles);
-        #pragma omp parallel for
-        for(int i = 0; i < validTriangles * 3; i++){
-            colors[i] = static_cast <float> (rand() / static_cast <float> (RAND_MAX));
         }
 
         auto end = chrono::steady_clock::now();
@@ -151,15 +162,10 @@ int main(int argc, char** argv) {
         float* pixel = (float*)malloc(sizeof(float) * 3);
         readyOutputFile(fileName, (timePassed.count() / 1000));
         for (int i = 0; i < definedSize * definedSize; i++){
-            if (pointTests[i] <= 0) {
-                pixel[0] = pixel[1] = pixel[2] = 0;
-            }
-            else {
-                // do color
-                pixel[0] = colors[(pointTests[i] - 1)*3];
-                pixel[1] = colors[(pointTests[i] - 1)*3 + 1];
-                pixel[2] = colors[(pointTests[i] - 1)*3 + 2];
-            }
+            // do color (white for now)
+            pixel[0] = pointTests[i];
+            pixel[1] = pointTests[i];
+            pixel[2] = pointTests[i];
             writeVertex(fileName, pixel);
         }
         free(pixel);
@@ -177,5 +183,5 @@ int main(int argc, char** argv) {
 }
 
 // Leah - how to run in command line:
-// compile: g++ -o rasterize.exe rasterize.cpp filehandler.cpp barycentric.cpp
-// execute: read.exe [fileName no extention]
+// compile: g++ -O3 -o rasterize rasterize.cpp filehandler.cpp pixel.cpp -fopenmp
+// execute: ./rasterize [fileName no extention]

@@ -33,4 +33,6 @@ c5_pin_model_dump.txt
 # ignore pycache
 __pycache__
 
+# ignore text files in the models folder
+Models/*.txt
 
