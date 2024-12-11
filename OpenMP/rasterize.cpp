@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
     }
     // else I could add optional size values, but let's just hardset it to 256...
 
+    omp_set_num_threads(definedSize);
     #pragma omp.h parallel num_threads(definedSize)
 	{
         auto start = chrono::steady_clock::now();

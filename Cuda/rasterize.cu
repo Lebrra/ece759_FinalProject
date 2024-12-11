@@ -156,12 +156,6 @@ int main(int argc, char** argv) {
             pixel[2] = colors[(pointTests[i] - 1)*3 + 2];
             colorCounter++;
         }
-        if (i < 5){
-            cout << "front pixel debug: (" << pixel[0] << ", " << pixel[1] << ", " << pixel[2] << ")\n";
-        }
-        else if (i > definedSize*definedSize-5){
-            cout << "end pixel debug: (" << pixel[0] << ", " << pixel[1] << ", " << pixel[2] << ")\n";
-        }
 
         writeVertex(fileName, pixel);
     }
